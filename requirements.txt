@@ -1,0 +1,5 @@
+smbus2
+spidev
+Jetson.GPIO
+numpy
+Pillow

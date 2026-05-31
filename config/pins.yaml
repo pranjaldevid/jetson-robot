@@ -1,0 +1,21 @@
+# Jetson Orin Nano J12 header — physical pin numbers
+imu:                 # MPU6050, I2C bus 7
+  i2c_bus: 7
+  address: 0x68
+  sda: 3
+  scl: 5
+display_left:        # GC9A01 on SPI0, /dev/spidev0.0
+  spi_bus: 0
+  cs: 0
+  dc: 29
+  rst: 31
+display_right:       # GC9A01 on SPI0, /dev/spidev0.1
+  spi_bus: 0
+  cs: 1
+  dc: 33
+  rst: 32
+audio:               # INMP441 + MAX98357 on I2S0
+  bclk: 12
+  lrclk: 35
+  mic_data_in: 38
+  amp_data_out: 40

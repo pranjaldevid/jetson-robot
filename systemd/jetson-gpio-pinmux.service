@@ -1,0 +1,16 @@
+[Unit]
+Description=Jetson GPIO pin-mux initialisation (SPI display CS/DC/RST)
+DefaultDependencies=no
+Before=sysinit.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c '\
+  busybox devmem 0x2430068 w 0x8 && \
+  busybox devmem 0x2430070 w 0x8 && \
+  busybox devmem 0x2434040 w 0x4 && \
+  busybox devmem 0x2434080 w 0x5'
+
+[Install]
+WantedBy=sysinit.target

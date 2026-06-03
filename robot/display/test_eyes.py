@@ -1,28 +1,41 @@
-"""Two-screen GC9A01 smoke test.
+"""Two-screen GC9A01 colour sequence test.
 
 Run with:  python -m robot.display.test_eyes
 
-Fills display 1 (spidev0.0) red and display 2 (spidev0.1) blue, holds for
-2 seconds, blanks both, and cleans up GPIO.
+Shows RED, GREEN, then BLUE on both displays for 10 seconds each,
+then blanks both screens and cleans up GPIO.
 """
 import time
 import Jetson.GPIO as GPIO
 
 from robot.display.gc9a01 import GC9A01
 
-RED = 0xF800     # RGB565
-BLUE = 0x001F
+RED   = 0xF800   # RGB565
+GREEN = 0x07E0
+BLUE  = 0x001F
 BLACK = 0x0000
 
 
 def main():
-    # Pins match config/pins.yaml (display_left / display_right, BOARD numbering).
     disp1 = GC9A01(spi_bus=0, spi_dev=0, dc=29, rst=31)   # /dev/spidev0.0
     disp2 = GC9A01(spi_bus=0, spi_dev=1, dc=33, rst=32)   # /dev/spidev0.1
     try:
+        print("Both screens: RED")
         disp1.fill(RED)
+        disp2.fill(RED)
+        time.sleep(10)
+
+        print("Both screens: GREEN")
+        disp1.fill(GREEN)
+        disp2.fill(GREEN)
+        time.sleep(10)
+
+        print("Both screens: BLUE")
+        disp1.fill(BLUE)
         disp2.fill(BLUE)
-        time.sleep(2)
+        time.sleep(10)
+
+        print("Both screens: BLACK (done)")
         disp1.fill(BLACK)
         disp2.fill(BLACK)
     finally:

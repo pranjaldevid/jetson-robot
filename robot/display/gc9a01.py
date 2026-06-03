@@ -31,7 +31,7 @@ _INIT = [
     (0x8E, [0xFF]),
     (0x8F, [0xFF]),
     (0xB6, [0x00, 0x20]),
-    (0x36, [0x08]),                  # MADCTL — BGR
+    (0x36, [0x00]),                  # MADCTL — RGB
     (0x3A, [0x05]),                  # COLMOD — 16 bits/pixel (RGB565)
     (0x90, [0x08, 0x08, 0x08, 0x08]),
     (0xBD, [0x06]),
@@ -62,7 +62,6 @@ _INIT = [
     (0x74, [0x10, 0x85, 0x80, 0x00, 0x00, 0x4E, 0x00]),
     (0x98, [0x3E, 0x07]),
     (0x35, []),                      # tearing effect line on
-    (0x21, []),                      # display inversion on
     (0x11, []),                      # sleep out
 ]
 
@@ -71,7 +70,7 @@ class GC9A01:
     """Driver for a single GC9A01 round display on hardware-CS SPI."""
 
     def __init__(self, spi_bus=0, spi_dev=0, dc=None, rst=None,
-                 speed_hz=32000000):
+                 speed_hz=8000000):
         if dc is None or rst is None:
             raise ValueError("dc and rst BOARD pin numbers are required")
         self.dc = dc

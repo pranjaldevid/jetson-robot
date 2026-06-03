@@ -125,7 +125,7 @@ class GC9A01:
         """Send RAMWR then pixel bytes; CS stays asserted for the whole frame."""
         self._write_cmd(0x2C)        # RAMWR, DC low
         GPIO.output(self.dc, GPIO.HIGH)
-        self.spi.writebytes2(buf)    # large transfer, hardware CS held low
+        self.spi.xfer3(buf)          # CS held active across chunks
 
     def blit(self, buf):
         """Write a full 240x240 RGB565 big-endian frame (bytes/bytearray)."""

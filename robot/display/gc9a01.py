@@ -1,7 +1,12 @@
 """GC9A01 240x240 round SPI display driver — Jetson Orin Nano.
 
-SPI via spidev, DC/RST via Jetson.GPIO (BOARD pin numbering). CS is handled by
-the SPI controller's hardware chip-select, so it is never driven here.
+Hardware is configured via the JetsonHacks device-tree overlay
+(jetson-orin-spi-overlay-guide, 'st7789/jetson-default' preset), which:
+  - enables the SPI controller as /dev/spidev1.0  (CS on BOARD pin 24)
+  - configures DC=BOARD 29 and RST=BOARD 31 as proper GPIOs
+
+This replaces the old jetson-io + devmem approach. CS is the controller's
+hardware chip-select and is never driven here. DC/RST use Jetson.GPIO (BOARD).
 """
 import time
 import numpy as np
@@ -31,7 +36,7 @@ _INIT = [
     (0x8E, [0xFF]),
     (0x8F, [0xFF]),
     (0xB6, [0x00, 0x20]),
-    (0x36, [0x00]),                  # MADCTL — RGB
+    (0x36, [0x00]),                  # MADCTL — RGB, portrait (try 0x08 if R/B swapped)
     (0x3A, [0x05]),                  # COLMOD — 16 bits/pixel (RGB565)
     (0x90, [0x08, 0x08, 0x08, 0x08]),
     (0xBD, [0x06]),
@@ -62,6 +67,7 @@ _INIT = [
     (0x74, [0x10, 0x85, 0x80, 0x00, 0x00, 0x4E, 0x00]),
     (0x98, [0x3E, 0x07]),
     (0x35, []),                      # tearing effect line on
+    (0x21, []),                      # display inversion ON — GC9A01 panels need this
     (0x11, []),                      # sleep out
 ]
 
@@ -69,10 +75,11 @@ _INIT = [
 class GC9A01:
     """Driver for a single GC9A01 round display on hardware-CS SPI."""
 
-    def __init__(self, spi_bus=0, spi_dev=0, dc=None, rst=None,
-                 speed_hz=8000000):
-        if dc is None or rst is None:
-            raise ValueError("dc and rst BOARD pin numbers are required")
+    def __init__(self, spi_bus=1, spi_dev=0, dc=29, rst=31,
+                 speed_hz=32000000):
+        # Defaults match the JetsonHacks 'jetson-default' overlay:
+        #   spi_bus=1, spi_dev=0  -> /dev/spidev1.0  (CS = BOARD 24)
+        #   dc=29, rst=31         -> DC/RST GPIOs
         self.dc = dc
         self.rst = rst
 
@@ -82,6 +89,7 @@ class GC9A01:
         self.spi.mode = 0
 
         GPIO.setmode(GPIO.BOARD)
+        GPIO.setwarnings(False)
         GPIO.setup(self.dc, GPIO.OUT, initial=GPIO.HIGH)
         GPIO.setup(self.rst, GPIO.OUT, initial=GPIO.HIGH)
 
@@ -122,10 +130,21 @@ class GC9A01:
         self._write_data([y0 >> 8, y0 & 0xFF, y1 >> 8, y1 & 0xFF])
 
     def _write_pixels(self, buf):
-        """Send RAMWR then pixel bytes; CS stays asserted for the whole frame."""
-        self._write_cmd(0x2C)        # RAMWR, DC low
+        """Send RAMWR, then stream the whole frame in one transfer.
+
+        writebytes2 is the proven path (this is what the JetsonHacks ST7789
+        driver uses): it streams an arbitrarily large buffer natively with
+        correct chip-select handling, no manual chunking required.
+        """
+        self._write_cmd(0x2C)        # RAMWR
         GPIO.output(self.dc, GPIO.HIGH)
-        self.spi.xfer3(buf)          # CS held active across chunks
+        try:
+            self.spi.writebytes2(buf)
+        except AttributeError:
+            # Fallback for ancient spidev without writebytes2
+            chunk = 4096
+            for i in range(0, len(buf), chunk):
+                self.spi.writebytes(buf[i:i + chunk])
 
     def blit(self, buf):
         """Write a full 240x240 RGB565 big-endian frame (bytes/bytearray)."""

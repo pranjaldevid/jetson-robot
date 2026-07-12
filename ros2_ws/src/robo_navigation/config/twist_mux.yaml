@@ -1,0 +1,21 @@
+# twist_mux priority arbitration per Section 2.9 of docs/docs_ros2_architecture.md.
+# Output remapped to /cmd_vel_out -> /cmd_vel by the launch file.
+#
+# Phase 1 only exercises the teleop input (gesture/nav publishers don't exist
+# yet), but the full priority table is defined here now since it is pure data
+# and must match the architecture contract exactly.
+twist_mux:
+  ros__parameters:
+    topics:
+      gesture:
+        topic: /cmd_vel_gesture
+        timeout: 0.5
+        priority: 100
+      teleop:
+        topic: /cmd_vel_teleop
+        timeout: 0.5
+        priority: 50
+      navigation:
+        topic: /cmd_vel_nav
+        timeout: 0.5
+        priority: 10

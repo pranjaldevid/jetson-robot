@@ -5,10 +5,35 @@
   base xacro loads on the real robot with none of this present and the TF tree stays
   identical between sim and hardware (Section 4/6).
 
-  Phase 0: this file is a placeholder, included but empty of plugins.
-  Phase 1 adds: gz-sim-diff-drive-system, gz-sim-joint-state-publisher-system.
   Phase 2 adds: stereo camera sensors on camera_left_link / camera_right_link.
 -->
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Differential drive: left pair (fl, rl) / right pair (fr, rr), per the
+       skid-steer wheel layout defined in robo.urdf.xacro. Odometry publication
+       and odom TF are disabled (odom_publish_frequency=0) per Section 5/6 of
+       the architecture doc: cuVSLAM owns map->odom->base_link, not this plugin,
+       so it must not publish a competing TF. -->
+  <gazebo>
+    <plugin filename="gz-sim-diff-drive-system" name="gz::sim::systems::DiffDrive">
+      <left_joint>wheel_fl_joint</left_joint>
+      <left_joint>wheel_rl_joint</left_joint>
+      <right_joint>wheel_fr_joint</right_joint>
+      <right_joint>wheel_rr_joint</right_joint>
+      <wheel_separation>${track_width}</wheel_separation>
+      <wheel_radius>${wheel_radius}</wheel_radius>
+      <odom_publish_frequency>0</odom_publish_frequency>
+      <topic>/cmd_vel</topic>
+      <frame_id>odom</frame_id>
+      <child_frame_id>base_link</child_frame_id>
+    </plugin>
+
+    <plugin filename="gz-sim-joint-state-publisher-system" name="gz::sim::systems::JointStatePublisher">
+      <joint_name>wheel_fl_joint</joint_name>
+      <joint_name>wheel_fr_joint</joint_name>
+      <joint_name>wheel_rl_joint</joint_name>
+      <joint_name>wheel_rr_joint</joint_name>
+    </plugin>
+  </gazebo>
 
 </robot>

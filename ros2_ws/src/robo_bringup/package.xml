@@ -15,6 +15,14 @@
   <exec_depend>robo_perception</exec_depend>
   <exec_depend>robo_navigation</exec_depend>
   <exec_depend>launch_ros</exec_depend>
+  <exec_depend>ros_gz_bridge</exec_depend>
+  <exec_depend>twist_mux</exec_depend>
+  <!-- isaac_ros_image_proc / isaac_ros_stereo_image_proc (Phase 2 rectify +
+       disparity/point cloud) are intentionally NOT declared here: they are
+       Isaac ROS packages installed via NVIDIA's own apt/Docker channel on
+       JetPack 6, not resolvable via rosdep on a non-Jetson dev machine, and
+       common.launch.py gates them behind enable_isaac_ros so their absence
+       does not break colcon build or sim.launch.py elsewhere. -->
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

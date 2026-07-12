@@ -1,0 +1,19 @@
+# ros_gz_bridge parameter_bridge config for Companion ROBO.
+#
+# Every ROS-side topic name here must match the contract table in Section 3 of
+# docs/docs_ros2_architecture.md exactly - do not rename, even temporarily.
+#
+# Phase 1: /clock (sim time) and /cmd_vel (DiffDrive plugin input).
+# Phase 2 adds the stereo camera topics (appended once camera sensors exist).
+
+- ros_topic_name: "/clock"
+  gz_topic_name: "/clock"
+  ros_type_name: "rosgraph_msgs/msg/Clock"
+  gz_type_name: "gz.msgs.Clock"
+  direction: GZ_TO_ROS
+
+- ros_topic_name: "/cmd_vel"
+  gz_topic_name: "/cmd_vel"
+  ros_type_name: "geometry_msgs/msg/Twist"
+  gz_type_name: "gz.msgs.Twist"
+  direction: ROS_TO_GZ

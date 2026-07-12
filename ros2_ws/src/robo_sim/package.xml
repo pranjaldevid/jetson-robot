@@ -13,6 +13,8 @@
   <depend>ros_gz_sim</depend>
   <depend>ros_gz_bridge</depend>
   <exec_depend>rclpy</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>xacro</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

@@ -4,7 +4,7 @@
 # docs/docs_ros2_architecture.md exactly - do not rename, even temporarily.
 #
 # Phase 1: /clock (sim time) and /cmd_vel (DiffDrive plugin input).
-# Phase 2 adds the stereo camera topics (appended once camera sensors exist).
+# Phase 2: stereo camera topics below.
 
 - ros_topic_name: "/clock"
   gz_topic_name: "/clock"
@@ -17,3 +17,33 @@
   ros_type_name: "geometry_msgs/msg/Twist"
   gz_type_name: "gz.msgs.Twist"
   direction: ROS_TO_GZ
+
+# --- Phase 2: stereo cameras -------------------------------------------------
+# camera_left_link / camera_right_link sensors (named "left_camera"/
+# "right_camera" in robo.gazebo.xacro) publish under gz-sim's default scoped
+# sensor topic: /world/<world>/model/<model>/link/<link>/sensor/<name>/....
+# world="living_room", model="robo" per robo_sim/launch/spawn.launch.py.
+
+- ros_topic_name: "/stereo/left/image_raw"
+  gz_topic_name: "/world/living_room/model/robo/link/camera_left_link/sensor/left_camera/image"
+  ros_type_name: "sensor_msgs/msg/Image"
+  gz_type_name: "gz.msgs.Image"
+  direction: GZ_TO_ROS
+
+- ros_topic_name: "/stereo/left/camera_info"
+  gz_topic_name: "/world/living_room/model/robo/link/camera_left_link/sensor/left_camera/camera_info"
+  ros_type_name: "sensor_msgs/msg/CameraInfo"
+  gz_type_name: "gz.msgs.CameraInfo"
+  direction: GZ_TO_ROS
+
+- ros_topic_name: "/stereo/right/image_raw"
+  gz_topic_name: "/world/living_room/model/robo/link/camera_right_link/sensor/right_camera/image"
+  ros_type_name: "sensor_msgs/msg/Image"
+  gz_type_name: "gz.msgs.Image"
+  direction: GZ_TO_ROS
+
+- ros_topic_name: "/stereo/right/camera_info"
+  gz_topic_name: "/world/living_room/model/robo/link/camera_right_link/sensor/right_camera/camera_info"
+  ros_type_name: "sensor_msgs/msg/CameraInfo"
+  gz_type_name: "gz.msgs.CameraInfo"
+  direction: GZ_TO_ROS

@@ -1,0 +1,280 @@
+<?xml version="1.0"?>
+<!--
+  Companion ROBO base description.
+
+  ALL DIMENSIONS BELOW ARE PLACEHOLDERS (per docs/docs_ros2_architecture.md Section 5)
+  and MUST be corrected once the physical chassis is measured / built. Every value
+  is exposed as a xacro property so each correction is a one-line edit. Placeholder
+  values currently in use, all guesses:
+
+    - chassis_length / chassis_width / chassis_height : 0.250 / 0.200 / 0.120 m box
+    - chassis_mass                                     : 1.8 kg
+    - wheel_diameter / wheel_width                     : 0.060 / 0.025 m
+    - track_width (left-right wheel separation)        : 0.180 m
+    - wheelbase (front-rear wheel separation)           : 0.140 m
+    - camera_mount_height_above_chassis_top            : 0.100 m, 0 deg pitch
+    - stereo_baseline (Y offset, camera_left<->camera_right) : 0.080 m
+                                                          -- MUST equal the physical
+                                                          rig exactly once built; see
+                                                          Section 5 calibration note.
+    - camera hfov                                       : 1.086 rad (62.2 deg, IMX219)
+    - imu location                                       : chassis center
+    - tof location                                       : front bumper center, -10 deg pitch
+    - ultrasonic location                                : front corners, +/-20 deg yaw
+
+  Do not hand-edit computed/derived quantities; edit the base properties instead.
+-->
+<robot name="robo" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:arg name="use_sim" default="false"/>
+
+  <!-- ================= Placeholder dimension properties ================= -->
+  <!-- Chassis -->
+  <xacro:property name="chassis_length" value="0.250"/>
+  <xacro:property name="chassis_width" value="0.200"/>
+  <xacro:property name="chassis_height" value="0.120"/>
+  <xacro:property name="chassis_mass" value="1.8"/>
+  <!-- ground clearance: half wheel diameter, chassis sits on top of wheel centers -->
+  <xacro:property name="ground_clearance" value="0.030"/>
+
+  <!-- Wheels -->
+  <xacro:property name="wheel_diameter" value="0.060"/>
+  <xacro:property name="wheel_radius" value="${wheel_diameter / 2.0}"/>
+  <xacro:property name="wheel_width" value="0.025"/>
+  <xacro:property name="wheel_mass" value="0.15"/>
+  <xacro:property name="track_width" value="0.180"/>
+  <xacro:property name="wheelbase" value="0.140"/>
+
+  <!-- Camera mount / stereo -->
+  <xacro:property name="camera_mount_height_above_chassis_top" value="0.100"/>
+  <xacro:property name="camera_mount_pitch" value="0.0"/>
+  <xacro:property name="stereo_baseline" value="0.080"/>
+  <xacro:property name="camera_hfov" value="1.086"/>
+  <xacro:property name="camera_width_px" value="1280"/>
+  <xacro:property name="camera_height_px" value="720"/>
+  <xacro:property name="camera_update_rate" value="30"/>
+
+  <!-- IMU -->
+  <xacro:property name="imu_z_offset" value="${ground_clearance + chassis_height / 2.0}"/>
+
+  <!-- ToF -->
+  <xacro:property name="tof_pitch" value="0.1745"/> <!-- 10 deg down -->
+
+  <!-- Ultrasonics -->
+  <xacro:property name="us_yaw" value="0.3491"/> <!-- 20 deg -->
+
+  <xacro:property name="base_z" value="${ground_clearance + wheel_radius}"/>
+
+  <material name="chassis_grey">
+    <color rgba="0.3 0.3 0.3 1.0"/>
+  </material>
+  <material name="wheel_black">
+    <color rgba="0.05 0.05 0.05 1.0"/>
+  </material>
+  <material name="sensor_blue">
+    <color rgba="0.1 0.3 0.9 1.0"/>
+  </material>
+
+  <!-- ================= base_link ================= -->
+  <!-- base_link is intentionally not given collision/inertial geometry of its own:
+       it is the frame VSLAM will publish map->odom->base_link onto. All physical
+       geometry lives on chassis_link and the sensor/wheel links hung off base_link,
+       matching the TF tree in Section 4 of the architecture document. -->
+  <link name="base_link"/>
+
+  <!-- ================= chassis ================= -->
+  <joint name="base_link_to_chassis" type="fixed">
+    <parent link="base_link"/>
+    <child link="chassis_link"/>
+    <origin xyz="0 0 ${wheel_radius}" rpy="0 0 0"/>
+  </joint>
+
+  <link name="chassis_link">
+    <visual>
+      <origin xyz="0 0 ${chassis_height / 2.0}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${chassis_length} ${chassis_width} ${chassis_height}"/>
+      </geometry>
+      <material name="chassis_grey"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 ${chassis_height / 2.0}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${chassis_length} ${chassis_width} ${chassis_height}"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 ${chassis_height / 2.0}" rpy="0 0 0"/>
+      <mass value="${chassis_mass}"/>
+      <inertia
+        ixx="${chassis_mass / 12.0 * (chassis_width*chassis_width + chassis_height*chassis_height)}" ixy="0" ixz="0"
+        iyy="${chassis_mass / 12.0 * (chassis_length*chassis_length + chassis_height*chassis_height)}" iyz="0"
+        izz="${chassis_mass / 12.0 * (chassis_length*chassis_length + chassis_width*chassis_width)}"/>
+    </inertial>
+  </link>
+
+  <!-- ================= wheels ================= -->
+  <xacro:macro name="wheel" params="prefix x_offset y_offset">
+    <joint name="wheel_${prefix}_joint" type="continuous">
+      <parent link="base_link"/>
+      <child link="wheel_${prefix}_link"/>
+      <origin xyz="${x_offset} ${y_offset} 0" rpy="${-pi/2} 0 0"/>
+      <axis xyz="0 0 1"/>
+      <dynamics damping="0.1" friction="0.05"/>
+    </joint>
+    <link name="wheel_${prefix}_link">
+      <visual>
+        <geometry>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+        </geometry>
+        <material name="wheel_black"/>
+      </visual>
+      <collision>
+        <geometry>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="${wheel_mass}"/>
+        <inertia
+          ixx="${wheel_mass / 12.0 * (3*wheel_radius*wheel_radius + wheel_width*wheel_width)}" ixy="0" ixz="0"
+          iyy="${wheel_mass / 12.0 * (3*wheel_radius*wheel_radius + wheel_width*wheel_width)}" iyz="0"
+          izz="${wheel_mass / 2.0 * wheel_radius*wheel_radius}"/>
+      </inertial>
+    </link>
+  </xacro:macro>
+
+  <!-- Left pair (fl, rl) and right pair (fr, rr): differential / skid-steer drive,
+       DiffDrive plugin (Phase 1) drives left pair and right pair together. -->
+  <xacro:wheel prefix="fl" x_offset="${wheelbase / 2.0}"  y_offset="${track_width / 2.0}"/>
+  <xacro:wheel prefix="fr" x_offset="${wheelbase / 2.0}"  y_offset="${-track_width / 2.0}"/>
+  <xacro:wheel prefix="rl" x_offset="${-wheelbase / 2.0}" y_offset="${track_width / 2.0}"/>
+  <xacro:wheel prefix="rr" x_offset="${-wheelbase / 2.0}" y_offset="${-track_width / 2.0}"/>
+
+  <!-- ================= camera mount + stereo cameras ================= -->
+  <joint name="base_link_to_camera_mount" type="fixed">
+    <parent link="base_link"/>
+    <child link="camera_mount_link"/>
+    <origin xyz="${chassis_length / 2.0 - 0.02} 0 ${wheel_radius + chassis_height + camera_mount_height_above_chassis_top}"
+            rpy="0 ${camera_mount_pitch} 0"/>
+  </joint>
+  <link name="camera_mount_link">
+    <visual>
+      <geometry>
+        <box size="0.02 0.10 0.02"/>
+      </geometry>
+      <material name="sensor_blue"/>
+    </visual>
+  </link>
+
+  <joint name="camera_mount_to_camera_left" type="fixed">
+    <parent link="camera_mount_link"/>
+    <child link="camera_left_link"/>
+    <origin xyz="0 ${stereo_baseline / 2.0} 0" rpy="0 0 0"/>
+  </joint>
+  <link name="camera_left_link">
+    <visual>
+      <geometry>
+        <box size="0.02 0.02 0.02"/>
+      </geometry>
+      <material name="sensor_blue"/>
+    </visual>
+  </link>
+
+  <!-- REP-103: optical frame is Z-forward, X-right, Y-down relative to the
+       X-forward, Y-left, Z-up camera link. -->
+  <joint name="camera_left_to_optical" type="fixed">
+    <parent link="camera_left_link"/>
+    <child link="camera_left_optical"/>
+    <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
+  </joint>
+  <link name="camera_left_optical"/>
+
+  <joint name="camera_mount_to_camera_right" type="fixed">
+    <parent link="camera_mount_link"/>
+    <child link="camera_right_link"/>
+    <origin xyz="0 ${-stereo_baseline / 2.0} 0" rpy="0 0 0"/>
+  </joint>
+  <link name="camera_right_link">
+    <visual>
+      <geometry>
+        <box size="0.02 0.02 0.02"/>
+      </geometry>
+      <material name="sensor_blue"/>
+    </visual>
+  </link>
+
+  <joint name="camera_right_to_optical" type="fixed">
+    <parent link="camera_right_link"/>
+    <child link="camera_right_optical"/>
+    <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
+  </joint>
+  <link name="camera_right_optical"/>
+
+  <!-- ================= IMU ================= -->
+  <joint name="base_link_to_imu" type="fixed">
+    <parent link="base_link"/>
+    <child link="imu_link"/>
+    <origin xyz="0 0 ${imu_z_offset}" rpy="0 0 0"/>
+  </joint>
+  <link name="imu_link">
+    <visual>
+      <geometry>
+        <box size="0.01 0.01 0.005"/>
+      </geometry>
+      <material name="sensor_blue"/>
+    </visual>
+  </link>
+
+  <!-- ================= ToF ================= -->
+  <joint name="base_link_to_tof" type="fixed">
+    <parent link="base_link"/>
+    <child link="tof_link"/>
+    <origin xyz="${chassis_length / 2.0} 0 ${wheel_radius + chassis_height * 0.3}" rpy="0 ${tof_pitch} 0"/>
+  </joint>
+  <link name="tof_link">
+    <visual>
+      <geometry>
+        <box size="0.01 0.02 0.01"/>
+      </geometry>
+      <material name="sensor_blue"/>
+    </visual>
+  </link>
+
+  <!-- ================= Ultrasonics ================= -->
+  <joint name="base_link_to_us_left" type="fixed">
+    <parent link="base_link"/>
+    <child link="us_left_link"/>
+    <origin xyz="${chassis_length / 2.0} ${chassis_width / 2.0 - 0.01} ${wheel_radius + chassis_height * 0.3}"
+            rpy="0 0 ${us_yaw}"/>
+  </joint>
+  <link name="us_left_link">
+    <visual>
+      <geometry>
+        <cylinder radius="0.006" length="0.01"/>
+      </geometry>
+      <material name="sensor_blue"/>
+    </visual>
+  </link>
+
+  <joint name="base_link_to_us_right" type="fixed">
+    <parent link="base_link"/>
+    <child link="us_right_link"/>
+    <origin xyz="${chassis_length / 2.0} ${-(chassis_width / 2.0 - 0.01)} ${wheel_radius + chassis_height * 0.3}"
+            rpy="0 0 ${-us_yaw}"/>
+  </joint>
+  <link name="us_right_link">
+    <visual>
+      <geometry>
+        <cylinder radius="0.006" length="0.01"/>
+      </geometry>
+      <material name="sensor_blue"/>
+    </visual>
+  </link>
+
+  <!-- ================= Gazebo-only content ================= -->
+  <xacro:if value="$(arg use_sim)">
+    <xacro:include filename="$(find robo_description)/urdf/robo.gazebo.xacro"/>
+  </xacro:if>
+
+</robot>

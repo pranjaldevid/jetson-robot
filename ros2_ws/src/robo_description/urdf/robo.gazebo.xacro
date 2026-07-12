@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<!--
+  Gazebo Fortress (gz-sim) only content for Companion ROBO, per docs/docs_ros2_architecture.md
+  Section 5. Included from robo.urdf.xacro only when use_sim:=true, so the exact same
+  base xacro loads on the real robot with none of this present and the TF tree stays
+  identical between sim and hardware (Section 4/6).
+
+  Phase 0: this file is a placeholder, included but empty of plugins.
+  Phase 1 adds: gz-sim-diff-drive-system, gz-sim-joint-state-publisher-system.
+  Phase 2 adds: stereo camera sensors on camera_left_link / camera_right_link.
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+</robot>
